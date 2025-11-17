@@ -17,6 +17,9 @@ from modules.generate_labels.utils import coalesce_attack_config, extract_expert
                                           extract_labels, sgd_step
 
 
+EXPERIMENT_NAME = "example_attack"
+MODULE_NAME = "generate_labels"
+
 def run(experiment_name, module_name, **kwargs):
     """
     Optimizes and saves poisoned logit labels.
@@ -57,6 +60,7 @@ def run(experiment_name, module_name, **kwargs):
     _, _, _, _, mtt_dataset =\
         get_matching_datasets(dataset_flag, poisoner, clean_label, train_pct=train_pct, big=big_ims)
     
+    n_classes = get_n_classes(dataset_flag)
     labels = extract_labels(mtt_dataset.distill, config['one_hot_temp'], n_classes)
     labels_init = torch.stack(extract_labels(mtt_dataset.distill, 1, n_classes))
     labels_syn = torch.stack(labels).requires_grad_(True)
