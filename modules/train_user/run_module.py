@@ -11,7 +11,7 @@ import numpy as np
 from modules.base_utils.datasets import get_matching_datasets, get_n_classes, pick_poisoner,\
                                         construct_user_dataset
 from modules.base_utils.util import extract_toml, get_train_info, mini_train, load_model,\
-                                    needs_big_ims, slurmify_path, softmax
+                                    needs_big_ims, slurmify_path, softmax, clf_eval
 
 
 def run(experiment_name, module_name, **kwargs):
@@ -94,6 +94,13 @@ def run(experiment_name, module_name, **kwargs):
     np.save(output_path + "caccs.npy", clean_metrics)
     np.save(output_path + "labels.npy", labels_d.numpy())
     torch.save(model_retrain.state_dict(), output_path + "model.pth")
+
+    # Evaluate
+    print("Evaluating...")
+    clean_test_acc = clf_eval(model_retrain, test)[0]
+    poison_test_acc = clf_eval(model_retrain, poison_test.poison_dataset)[0]
+    print(f"{clean_test_acc=}")
+    print(f"{poison_test_acc=}")
 
 if __name__ == "__main__":
     experiment_name, module_name = sys.argv[1], sys.argv[2]

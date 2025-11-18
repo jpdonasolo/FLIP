@@ -14,6 +14,7 @@ target_label = 4
 poisoner = "1xs"
 epochs = 20
 checkpoint_iters = 50
+train_pct = 0.2
 
 # Module to generate attack labels from the expert trajectories.
 [generate_labels]
@@ -27,6 +28,7 @@ target_label = 4
 poisoner = "1xs"
 output_dir = "/Data/iuliia.korotkova/FLIP/experiments/example_attack/"
 lambda = 0.0
+train_pct = 0.2
 
 [generate_labels.expert_config]
 experts = 1
@@ -42,6 +44,6 @@ label_kwargs = {lr = 150, momentum = 0.5}
 # Module to flip labels at the provided budgets.
 [select_flips]
 budgets = [150, 300, 500, 1000, 1500]
-input_label_glob = "/Data/iuliia.korotkova/FLIP/experiments/example_attack/labels.npy"
-true_labels = "/Data/iuliia.korotkova/FLIP/experiments/example_attack/true.npy"
-output_dir = "/Data/iuliia.korotkova/FLIP/experiments/example_attack/"
+input_label_glob = "/Data/iuliia.korotkova/FLIP/experiments/attack_part/labels.npy"
+true_labels = "/Data/iuliia.korotkova/FLIP/experiments/attack_part/true.npy"
+output_dir = "/Data/iuliia.korotkova/FLIP/experiments/attack_part/"
