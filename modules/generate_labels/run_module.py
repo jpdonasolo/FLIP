@@ -93,7 +93,9 @@ def run(experiment_name, module_name, **kwargs):
     )
 
     mtt_dataloader, _ = either_dataloader_dataset_to_both(mtt_dataset,
-                                                          batch_size=batch_size)
+                                                          batch_size=batch_size,)
+    
+    mtt_dataloader.num_workers = 0
 
     losses = []
     with make_pbar(total=config['iterations'] * len(mtt_dataset)) as pbar:

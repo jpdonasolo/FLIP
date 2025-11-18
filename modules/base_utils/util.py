@@ -171,6 +171,8 @@ def clf_correct(y_pred: torch.Tensor, y: torch.Tensor):
 def clf_eval(model: torch.nn.Module, data: Union[DataLoader, Dataset]):
     device = get_module_device(model)
     dataloader, _ = either_dataloader_dataset_to_both(data, eval=True)
+    dataloader.num_workers = 0
+
     total_correct, total_loss = 0.0, 0.0
     with torch.no_grad():
         model.eval()
@@ -211,6 +213,7 @@ def mini_train(
     dataloader, _ = either_dataloader_dataset_to_both(train_data,
                                                       batch_size=batch_size,
                                                       shuffle=shuffle)
+    dataloader.num_workers = 0
     n = len(dataloader.dataset)
     total_examples = epochs * n
 

@@ -427,7 +427,8 @@ def make_dataloader(
     batch_size,
     *,
     shuffle=True,
-    drop_last=True
+    drop_last=True,
+    num_workers=0
 ):
     dataloader = DataLoader(
         dataset,
