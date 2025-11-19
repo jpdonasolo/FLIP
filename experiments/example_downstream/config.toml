@@ -5,13 +5,13 @@
 
 # Module to train a user model on input labels.
 [train_user]
-input_labels = "/Data/iuliia.korotkova/FLIP/experiments/example_attack/1000.npy"
+input_labels = "/Data/FLIP/experiments/example_attack/1500.npy"
 user_model = "r32p"
 trainer = "sgd"
 dataset = "cifar"
 source_label = 9
 target_label = 4
 poisoner = "1xs"
-output_dir = "/Data/iuliia.korotkova/FLIP/experiments/example_downstream/"
+output_dir = "/Data/FLIP/experiments/example_downstream/"
 soft = false
 alpha = 0.0

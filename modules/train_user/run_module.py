@@ -93,7 +93,7 @@ def run(experiment_name, module_name, **kwargs):
     np.save(output_path + "paccs.npy", poison_metrics)
     np.save(output_path + "caccs.npy", clean_metrics)
     np.save(output_path + "labels.npy", labels_d.numpy())
-    torch.save(model_retrain.state_dict(), output_path + "model.pth")
+    # torch.save(model_retrain.state_dict(), output_path + "model.pth")
 
     # Evaluate
     print("Evaluating...")
