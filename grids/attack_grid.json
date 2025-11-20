@@ -1,0 +1,20 @@
+[
+    {
+      "name": "cifar_r32p_1xp",
+      "metadata": {"dataset": "cifar", "model": "r32p", "poisoner": "1xp"},
+      "overrides": {
+        "train_expert": {"model": "r32p", "dataset": "cifar", "poisoner": "1xp"},
+        "generate_labels": {"expert_model": "r32p", "dataset": "cifar", "poisoner": "1xp"},
+        "train_user": {"user_model": "r32p", "dataset": "cifar", "poisoner": "1xp"}
+      }
+    },
+    {
+        "name": "cifar_r18_1xs",
+        "metadata": {"dataset": "cifar", "model": "r18", "poisoner": "1xs"},
+        "overrides": {
+          "train_expert": {"model": "r18", "dataset": "cifar", "poisoner": "1xs"},
+          "generate_labels": {"expert_model": "r18", "dataset": "cifar", "poisoner": "1xs"},
+          "train_user": {"user_model": "r18", "dataset": "cifar", "poisoner": "1xs"}
+        }
+      }
+]
