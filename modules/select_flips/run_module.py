@@ -22,7 +22,7 @@ def run(experiment_name, module_name, **kwargs):
     slurm_id = kwargs.get('slurm_id', None)
 
     args = extract_toml(experiment_name, module_name)
-    budgets = args.get("budgets", [150, 300, 500, 1000, 1500])
+    budgets = args.get("budgets", [1500])
     input_label_glob = slurmify_path(args["input_label_glob"], slurm_id)
     true_labels = slurmify_path(args["true_labels"], slurm_id)
     output_dir = slurmify_path(args["output_dir"], slurm_id)

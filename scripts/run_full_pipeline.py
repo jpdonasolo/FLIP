@@ -7,7 +7,7 @@ configurations and evaluating downstream performance across flip budgets.
 Workflow per configuration:
 1. Update `experiments/example_attack/config.toml` with model/dataset overrides
    and fresh output directories, then run `python run_experiment.py example_attack`.
-2. For each flip budget (default: [150, 300, 500, 1000, 1500]), update
+2. For each flip budget (default: [1500]), update
    `experiments/example_downstream/config.toml`, run the downstream training
    10 times, and collect the final clean/poison accuracies.
 3. Persist summary statistics (mean/std) for each (dataset, model, budget).
@@ -31,12 +31,12 @@ import numpy as np
 import toml
 
 
-PROJECT_ROOT = Path("/users/eleves-a/2025/iuliia.korotkova/FLIP").resolve()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ATTACK_CONFIG = PROJECT_ROOT / "experiments" / "example_attack" / "config.toml"
 DEFAULT_DOWNSTREAM_CONFIG = PROJECT_ROOT / "experiments" / "example_downstream" / "config.toml"
 DEFAULT_RESULTS_ROOT = Path("/Data/iuliia.korotkova/FLIP") / "out" / "pipeline_runs"
 DEFAULT_SUMMARY_PATH = Path("/Data/iuliia.korotkova/FLIP") / "out" / "pipeline_runs" / "metrics_summary.csv"
-DEFAULT_BUDGETS = [150, 300, 500, 1000, 1500]
+DEFAULT_BUDGETS = [1500]
 
 
 def ensure_trailing_slash(path: Path | str) -> str:

@@ -111,7 +111,7 @@ TRANSFORM_TEST_XY = {
 
 N_CLASSES = {
     'cifar': 10,
-    'cifar_100': 100,
+    'cifar_100': 20,
     'tiny_imagenet': 200
 }
 
@@ -433,7 +433,7 @@ def make_dataloader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=4,
+        num_workers=0,
         pin_memory=True,
         drop_last=drop_last,
     )

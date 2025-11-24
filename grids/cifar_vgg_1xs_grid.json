@@ -1,0 +1,28 @@
+[
+  {
+    "name": "cifar_vgg_1xs",
+    "metadata": { "dataset": "cifar", "model": "vgg", "poisoner": "1xs" },
+    "overrides": {
+      "train_expert": {
+        "model": "vgg",
+        "dataset": "cifar",
+        "poisoner": "1xs",
+        "batch_size": 32,
+        "epochs": 20
+      },
+      "generate_labels": {
+        "expert_model": "vgg",
+        "dataset": "cifar",
+        "poisoner": "1xs",
+        "batch_size": 32
+      },
+      "train_user": {
+        "user_model": "vgg",
+        "dataset": "cifar",
+        "poisoner": "1xs",
+        "batch_size": 32,
+        "epochs": 50
+      }
+    }
+  }
+]

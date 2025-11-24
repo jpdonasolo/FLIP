@@ -115,6 +115,11 @@ def run(experiment_name, module_name, **kwargs):
                 # Take a single expert / poison step
                 expert_model.train()
                 expert_model.zero_grad()
+                # convert one-hot target to class index
+                if y_t.ndim > 1:
+                    y_t = y_t.argmax(dim=1)
+                else:
+                    y_t = y_t.argmax()
                 loss = clf_loss(expert_model(x_t), y_t)
                 loss.backward()
                 optimizer_expert.step()

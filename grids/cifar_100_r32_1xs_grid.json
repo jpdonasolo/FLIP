@@ -1,0 +1,23 @@
+[
+    {
+    "name": "cifar_100_r32_1xs",
+    "metadata": { "dataset": "cifar_100", "model": "r32p", "poisoner": "1xs" },
+    "overrides": {
+        "train_expert": {
+        "model": "r32p",
+        "dataset": "cifar_100",
+        "poisoner": "1xs"
+        },
+        "generate_labels": {
+        "expert_model": "r32p",
+        "dataset": "cifar_100",
+        "poisoner": "1xs"
+        },
+        "train_user": {
+        "user_model": "r32p",
+        "dataset": "cifar_100",
+        "poisoner": "1xs"
+        }
+    }
+    }
+]
