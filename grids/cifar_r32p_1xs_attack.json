@@ -1,0 +1,35 @@
+[
+    {
+        "name": "cifar_r32p_1xs",
+        "metadata": {
+            "model": "r32p",
+            "dataset": "cifar",
+            "poisoner": "1xs"
+        },
+        "overrides": {
+            "train_expert": {
+                "model": "r32p",
+                "dataset": "cifar",
+                "poisoner": "1xs"
+            },
+            "generate_labels": {
+                "expert_model": "r32p",
+                "dataset": "cifar",
+                "poisoner": "1xs",
+                "expert_config": {
+                    "experts": 1,
+                    "min": 0,
+                    "max": 20
+                },
+                "attack_config": {
+                    "iterations": 25
+                }
+            },
+            "train_user": {
+                "user_model": "r32p",
+                "dataset": "cifar",
+                "poisoner": "1xs"
+            }
+        }
+    }
+]
