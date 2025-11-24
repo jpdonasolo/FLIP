@@ -31,11 +31,11 @@ import numpy as np
 import toml
 
 
-PROJECT_ROOT = Path("/users/eleves-a/2025/iuliia.korotkova/FLIP").resolve()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ATTACK_CONFIG = PROJECT_ROOT / "experiments" / "example_attack" / "config.toml"
 DEFAULT_DOWNSTREAM_CONFIG = PROJECT_ROOT / "experiments" / "example_downstream" / "config.toml"
-DEFAULT_RESULTS_ROOT = Path("/Data/iuliia.korotkova/FLIP") / "out" / "pipeline_runs"
-DEFAULT_SUMMARY_PATH = Path("/Data/iuliia.korotkova/FLIP") / "out" / "pipeline_runs" / "metrics_summary.csv"
+DEFAULT_RESULTS_ROOT = PROJECT_ROOT / "out" / "pipeline_runs"
+DEFAULT_SUMMARY_PATH = PROJECT_ROOT / "out" / "pipeline_runs" / "metrics_summary.csv"
 DEFAULT_BUDGETS = [150, 300, 500, 1000, 1500]
 
 
@@ -173,7 +173,7 @@ def orchestrate_combo(
 
     attack_config_path.write_text(toml.dumps(attack_config))
     print(f"[{ctx.name}] Running example_attack...")
-    run_single_experiment("example_attack")
+    run_single_experiment(args.attack_experiment_name)
 
     selected_dir = ctx.attack_dirs["selected"]
     for budget in args.budgets:
@@ -198,7 +198,7 @@ def orchestrate_combo(
             downstream_config_path.write_text(toml.dumps(downstream_config))
 
             print(f"[{ctx.name}] Budget {budget} – downstream run {run_idx}/{args.runs}")
-            run_single_experiment("example_downstream")
+            run_single_experiment(args.downstream_experiment_name)
 
             pacc = load_array_last_acc(run_dir / "paccs.npy")
             cacc = load_array_last_acc(run_dir / "caccs.npy")
@@ -226,6 +226,8 @@ def orchestrate_combo(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run attack/downstream grids and collect stats.")
+    parser.add_argument("--attack-experiment-name")
+    parser.add_argument("--downstream-experiment-name")
     parser.add_argument("--attack-config", default=str(DEFAULT_ATTACK_CONFIG))
     parser.add_argument("--downstream-config", default=str(DEFAULT_DOWNSTREAM_CONFIG))
     parser.add_argument("--results-root", default=str(DEFAULT_RESULTS_ROOT))
