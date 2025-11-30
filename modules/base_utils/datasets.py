@@ -1,12 +1,16 @@
 import random
-import numpy as np
-import torch
+import subprocess
+from pathlib import Path
 from PIL import Image
+from typing import Callable, Iterable, Tuple
+
+import numpy as np
+
+import torch
 from torch.utils.data import DataLoader, Dataset, ConcatDataset, Subset
 from torchvision import datasets, transforms
-from typing import Callable, Iterable, Tuple
-from pathlib import Path
-import subprocess
+
+import tensorflow_datasets as tfds
 
 
 CIFAR_TRANSFORM_NORMALIZE_MEAN = (0.4914, 0.4822, 0.4465)
@@ -69,6 +73,27 @@ CIFAR_100_TRANSFORM_TEST = transforms.Compose(
 )
 
 
+ILSVRC_IMAGENET_TRANSFORM_NORMALIZE_MEAN = (0.485, 0.456, 0.406)
+ILSVRC_IMAGENET_TRANSFORM_NORMALIZE_STD = (0.229, 0.224, 0.225)
+ILSVRC_IMAGENET_TRANSFORM_NORMALIZE = transforms.Normalize(
+    ILSVRC_IMAGENET_TRANSFORM_NORMALIZE_MEAN, ILSVRC_IMAGENET_TRANSFORM_NORMALIZE_STD
+)
+ILSVRC_IMAGENET_TRANSFORM_TRAIN = transforms.Compose(
+    [
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        ILSVRC_IMAGENET_TRANSFORM_NORMALIZE,
+    ]
+)
+ILSVRC_IMAGENET_TRANSFORM_TEST = transforms.Compose(
+    [
+        transforms.Resize(32),
+        transforms.ToTensor(),
+        ILSVRC_IMAGENET_TRANSFORM_NORMALIZE,
+    ]
+)
+
 TINY_IMAGENET_TRANSFORM_NORMALIZE_MEAN = (0.485, 0.456, 0.406)
 TINY_IMAGENET_TRANSFORM_NORMALIZE_STD = (0.229, 0.224, 0.225)
 TINY_IMAGENET_TRANSFORM_NORMALIZE = transforms.Normalize(
@@ -92,28 +117,170 @@ TINY_IMAGENET_TRANSFORM_TEST = transforms.Compose(
 PATH = {
     'cifar': Path("./data/data_cifar10"),
     'cifar_100': Path("./data/data_cifar100"),
-    'tiny_imagenet': "/scr/tiny-imagenet-200"
+    'tiny_imagenet': "/scr/tiny-imagenet-200",
+    'imagenet': Path("./data/ilsvrc_img_train")
 }
 
 TRANSFORM_TRAIN_XY = {
     'cifar': lambda xy: (CIFAR_TRANSFORM_TRAIN(xy[0]), xy[1]),
     'cifar_big': lambda xy: (CIFAR_BIG_TRANSFORM_TRAIN(xy[0]), xy[1]),
     'cifar_100': lambda xy: (CIFAR_100_TRANSFORM_TRAIN(xy[0]), xy[1]),
-    'tiny_imagenet': lambda xy: (TINY_IMAGENET_TRANSFORM_TRAIN(xy[0]), xy[1])
+    'tiny_imagenet': lambda xy: (TINY_IMAGENET_TRANSFORM_TRAIN(xy[0]), xy[1]),
+    'imagenet': lambda xy: (ILSVRC_IMAGENET_TRANSFORM_TRAIN(xy[0]), xy[1])
 }
 
 TRANSFORM_TEST_XY = {
     'cifar': lambda xy: (CIFAR_TRANSFORM_TEST(xy[0]), xy[1]),
     'cifar_big': lambda xy: (CIFAR_BIG_TRANSFORM_TEST(xy[0]), xy[1]),
     'cifar_100': lambda xy: (CIFAR_100_TRANSFORM_TEST(xy[0]), xy[1]),
-    'tiny_imagenet': lambda xy: (TINY_IMAGENET_TRANSFORM_TEST(xy[0]), xy[1])
+    'tiny_imagenet': lambda xy: (TINY_IMAGENET_TRANSFORM_TEST(xy[0]), xy[1]),
+    'imagenet': lambda xy: (ILSVRC_IMAGENET_TRANSFORM_TEST(xy[0]), xy[1])
 }
 
 N_CLASSES = {
     'cifar': 10,
     'cifar_100': 100,
-    'tiny_imagenet': 200
+    'tiny_imagenet': 200,
+    'imagenet': 1000
 }
+
+
+class TFDatasetWrapper(Dataset):
+    """
+    Wrapper to make TensorFlow datasets compatible with PyTorch-style iteration.
+    Converts dict-based TF datasets {'image': ..., 'label': ...} to tuple format (image, label).
+    Converts numpy arrays to PIL Images to be compatible with torchvision transforms.
+    
+    Memory-efficient implementation using lazy loading with mmap-backed storage.
+    """
+    def __init__(self, tf_dataset_info):
+        """
+        Args:
+            tf_dataset_info: tuple of (dataset_name, split, data_dir) for lazy loading
+        """
+        self.dataset_name, self.split, self.data_dir = tf_dataset_info
+        self._length = None
+        self._cache_built = False
+        self._memmap_file = None
+        self._labels_file = None
+        self._shape = None
+        self._dtype = None
+        
+    def _get_cache_path(self):
+        """Get cache directory path."""
+        cache_dir = Path(self.data_dir) / "pytorch_cache" / self.dataset_name.replace("/", "_") / self.split
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+    
+    def _build_cache(self):
+        """Build memory-mapped cache file for efficient random access."""
+        if self._cache_built:
+            return
+            
+        import tensorflow_datasets as tfds
+        import tensorflow as tf
+        
+        # Force TensorFlow to use CPU only to avoid GPU memory usage
+        tf.config.set_visible_devices([], 'GPU')
+        
+        cache_dir = self._get_cache_path()
+        memmap_path = cache_dir / "images.mmap"
+        labels_path = cache_dir / "labels.npy"
+        meta_path = cache_dir / "meta.npy"
+        
+        # Check if cache already exists
+        if memmap_path.exists() and labels_path.exists() and meta_path.exists():
+            # Load from existing cache
+            meta = np.load(meta_path, allow_pickle=True).item()
+            self._length = meta['length']
+            self._shape = tuple(meta['shape'])
+            self._dtype = np.dtype(meta['dtype'])
+            self._memmap_file = str(memmap_path)
+            self._labels_file = str(labels_path)
+            self._cache_built = True
+            return
+        
+        # Build cache from TensorFlow dataset
+        print(f"Building cache for {self.dataset_name} {self.split}... This will only happen once.")
+        ds = tfds.load(
+            self.dataset_name,
+            split=self.split,
+            shuffle_files=False,
+            data_dir=self.data_dir,
+            batch_size=None,
+        )
+        
+        # Get first item to determine shape and dtype
+        first_item = next(iter(tfds.as_numpy(ds)))
+        if isinstance(first_item, dict):
+            first_image = first_item['image']
+        else:
+            first_image = first_item[0]
+        
+        self._shape = first_image.shape
+        self._dtype = first_image.dtype
+        
+        # Count total items
+        print("Counting dataset size...")
+        self._length = sum(1 for _ in ds)
+        
+        # Create memory-mapped array
+        print(f"Creating memory-mapped file for {self._length} images...")
+        memmap_shape = (self._length,) + self._shape
+        images_mmap = np.memmap(memmap_path, dtype=self._dtype, mode='w+', shape=memmap_shape)
+        labels_list = []
+        
+        # Fill the memory-mapped file
+        print("Filling cache...")
+        for idx, item in enumerate(tfds.as_numpy(ds)):
+            if isinstance(item, dict):
+                images_mmap[idx] = item['image']
+                labels_list.append(int(item['label']))
+            else:
+                images_mmap[idx] = item[0]
+                labels_list.append(int(item[1]))
+            
+            if (idx + 1) % 10000 == 0:
+                print(f"  Processed {idx + 1}/{self._length} images...")
+        
+        # Flush and save labels
+        images_mmap.flush()
+        np.save(labels_path, np.array(labels_list, dtype=np.int32))
+        
+        # Save metadata
+        meta = {
+            'length': self._length,
+            'shape': list(self._shape),
+            'dtype': str(self._dtype)
+        }
+        np.save(meta_path, meta)
+        
+        self._memmap_file = str(memmap_path)
+        self._labels_file = str(labels_path)
+        self._cache_built = True
+        print("Cache built successfully!")
+    
+    def __getitem__(self, idx):
+        if not self._cache_built:
+            self._build_cache()
+        
+        # Load from memory-mapped file (doesn't load entire file into memory)
+        images_mmap = np.memmap(self._memmap_file, dtype=self._dtype, mode='r', 
+                                shape=(self._length,) + self._shape)
+        labels = np.load(self._labels_file, mmap_mode='r')
+        
+        image = images_mmap[idx]
+        label = int(labels[idx])
+        
+        # Convert to PIL Image
+        image = Image.fromarray(image)
+        
+        return image, label
+    
+    def __len__(self):
+        if self._length is None:
+            self._build_cache()
+        return self._length
 
 
 class LabelSortedDataset(ConcatDataset):
@@ -380,9 +547,21 @@ def load_dataset(dataset_flag, train=True):
         return load_cifar_100_dataset(path, train)
     elif dataset_flag == 'tiny_imagenet':
         return load_tiny_imagenet_dataset(path, train)
+    elif dataset_flag == 'imagenet':
+        return load_imagenet_dataset(path, train)
     else:
         raise NotImplementedError(f"Dataset {dataset_flag} is not supported.")
 
+
+def load_imagenet_dataset(path, train=True):
+    # Pass dataset info for lazy loading instead of loading immediately
+    dataset_info = (
+        "imagenet_resized/64x64",
+        "train" if train else "validation",
+        path
+    )
+    # Wrap with lazy loading - data will only be loaded when accessed
+    return TFDatasetWrapper(dataset_info)
 
 def load_cifar_dataset(path, train=True):
     dataset = datasets.CIFAR10(root=str(path),
@@ -445,6 +624,8 @@ def pick_poisoner(poisoner_flag, dataset_flag, target_label):
         x_poisoner = pick_cifar_poisoner(poisoner_flag)
     elif dataset_flag == "tiny_imagenet":
         x_poisoner = pick_tiny_imagenet_poisoner(poisoner_flag)
+    elif dataset_flag == "imagenet":
+        x_poisoner = pick_imagenet_poisoner(poisoner_flag)
     else:
         raise NotImplementedError()
 
@@ -452,6 +633,13 @@ def pick_poisoner(poisoner_flag, dataset_flag, target_label):
 
     return x_label_poisoner
 
+
+def pick_imagenet_poisoner(poisoner_flag):
+    if poisoner_flag == "1xs":
+        x_poisoner = StripePoisoner(strength=6, freq=16)
+    else:
+        raise NotImplementedError()
+    return x_poisoner
 
 def pick_cifar_poisoner(poisoner_flag):
     if poisoner_flag == "1xp":
@@ -555,7 +743,7 @@ def get_matching_datasets(
     train_data = load_dataset(dataset_flag, train=True)
     test_data = load_dataset(dataset_flag, train=False)
 
-    n_classes = len(train_data.classes)
+    n_classes = get_n_classes(dataset_flag)
     train_labels = np.array([y for _, y in train_data])
 
     train_labels = train_labels[:int(len(train_labels) * train_pct)]
