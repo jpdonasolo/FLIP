@@ -281,6 +281,15 @@ class TFDatasetWrapper(Dataset):
         if self._length is None:
             self._build_cache()
         return self._length
+    
+    @property
+    def targets(self):
+        """Efficiently access all labels without loading images."""
+        if not self._cache_built:
+            self._build_cache()
+        # Load labels with memory mapping for efficiency
+        labels = np.load(self._labels_file, mmap_mode='r')
+        return labels
 
 
 class LabelSortedDataset(ConcatDataset):
@@ -744,7 +753,11 @@ def get_matching_datasets(
     test_data = load_dataset(dataset_flag, train=False)
 
     n_classes = get_n_classes(dataset_flag)
-    train_labels = np.array([y for _, y in train_data])
+    # Use .targets attribute for efficient label access (avoids loading all images)
+    if hasattr(train_data, 'targets'):
+        train_labels = np.array(train_data.targets)
+    else:
+        train_labels = np.array([y for _, y in train_data])
 
     train_labels = train_labels[:int(len(train_labels) * train_pct)]
 
