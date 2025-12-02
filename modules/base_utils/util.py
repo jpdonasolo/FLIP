@@ -11,6 +11,7 @@ from modules.base_utils.model.model import SequentialImageNetwork,\
 import torch.backends.cudnn as cudnn
 import toml
 from collections import OrderedDict
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from modules.base_utils.datasets import make_dataloader
 
@@ -189,6 +190,75 @@ def clf_eval(model: torch.nn.Module, data: Union[DataLoader, Dataset]):
     return total_correct, total_loss
 
 
+def compute_per_class_accuracy(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int):
+    """Compute accuracy for each class individually (recall per class)."""
+    per_class_acc = np.zeros(num_classes)
+    for c in range(num_classes):
+        mask = y_true == c
+        if mask.sum() > 0:
+            per_class_acc[c] = (y_pred[mask] == c).sum() / mask.sum()
+    return per_class_acc
+
+
+def compute_f1_scores(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int):
+    """Compute per-class F1, macro F1, and weighted F1 scores using sklearn."""
+    labels = list(range(num_classes))
+    
+    per_class_f1 = f1_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
+    macro_f1 = f1_score(y_true, y_pred, labels=labels, average='macro', zero_division=0)
+    weighted_f1 = f1_score(y_true, y_pred, labels=labels, average='weighted', zero_division=0)
+    
+    return per_class_f1, macro_f1, weighted_f1
+
+
+def clf_eval_detailed(model: torch.nn.Module, data: Union[DataLoader, Dataset], num_classes: int = None):
+    """Extended evaluation with per-class accuracy and F1 scores."""
+    device = get_module_device(model)
+    dataloader, _ = either_dataloader_dataset_to_both(data, eval=True)
+    
+    all_preds = []
+    all_labels = []
+    total_loss = 0.0
+    
+    with torch.no_grad():
+        model.eval()
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
+            y_pred = model(x)
+            loss = clf_loss(y_pred, y)
+            
+            # Handle soft labels
+            if len(y.shape) > 1 and y.shape[1] > 1:
+                y = torch.argmax(y, dim=1)
+            
+            y_hat = y_pred.data.max(1)[1]
+            all_preds.append(y_hat.cpu().numpy())
+            all_labels.append(y.cpu().numpy())
+            total_loss += loss.item()
+    
+    all_preds = np.concatenate(all_preds)
+    all_labels = np.concatenate(all_labels)
+    n = len(all_labels)
+    
+    # Infer num_classes if not provided
+    if num_classes is None:
+        num_classes = max(all_labels.max(), all_preds.max()) + 1
+    
+    accuracy = (all_preds == all_labels).sum() / n
+    total_loss /= n
+    per_class_acc = compute_per_class_accuracy(all_labels, all_preds, num_classes)
+    per_class_f1, macro_f1, weighted_f1 = compute_f1_scores(all_labels, all_preds, num_classes)
+    
+    return {
+        'accuracy': accuracy,
+        'loss': total_loss,
+        'per_class_accuracy': per_class_acc,
+        'per_class_f1': per_class_f1,
+        'macro_f1': macro_f1,
+        'weighted_f1': weighted_f1,
+    }
+
+
 def get_mean_lr(opt: optim.Optimizer):
     return np.mean([group["lr"] for group in opt.param_groups])
 
@@ -205,7 +275,8 @@ def mini_train(
     epochs: int,
     shuffle=True,
     callback=None,
-    record=False
+    record=False,
+    num_classes: int = None
 ):
     device = get_module_device(model)
     dataloader, _ = either_dataloader_dataset_to_both(train_data,
@@ -220,7 +291,7 @@ def mini_train(
             num_sets = len(test_data)
         else:
             test_data = [test_data]
-        acc_loss = [[] for _ in range(num_sets)]
+        history = [[] for _ in range(num_sets)]
 
     with make_pbar(total=total_examples) as pbar:
         for epoch in range(1, epochs + 1):
@@ -252,19 +323,25 @@ def mini_train(
             }
             if test_data:
                 for i, dataset in enumerate(test_data):
-                    acc, loss = clf_eval(model, dataset)
-                    pbar_postfix.update(
-                        {
-                            "acc" + str(i): "%.2f" % (acc * 100),
-                            # "loss" + str(i): "%.4g" % loss,
-                        }
-                    )
                     if record:
-                        acc_loss[i].append((acc, loss))
+                        metrics = clf_eval_detailed(model, dataset, num_classes)
+                        pbar_postfix.update({
+                            "acc" + str(i): "%.2f" % (metrics['accuracy'] * 100),
+                            "f1" + str(i): "%.2f" % (metrics['macro_f1'] * 100),
+                        })
+                        history[i].append(metrics)
+                    else:
+                        acc, loss = clf_eval(model, dataset)
+                        pbar_postfix.update({
+                            "acc" + str(i): "%.2f" % (acc * 100),
+                        })
             pbar.set_postfix(**pbar_postfix)
 
     if record:
-        return model, *acc_loss
+        return {
+            'model': model,
+            'history': history,
+        }
     return model
 
 

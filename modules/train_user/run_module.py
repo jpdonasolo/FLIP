@@ -77,7 +77,7 @@ def run(experiment_name, module_name, **kwargs):
         epochs, optim_kwargs, scheduler_kwargs
     )
 
-    model_retrain, clean_metrics, poison_metrics = mini_train(
+    result = mini_train(
         model=model_retrain,
         train_data=user_dataset,
         test_data=[test, poison_test.poison_dataset],
@@ -85,13 +85,24 @@ def run(experiment_name, module_name, **kwargs):
         opt=optimizer_retrain,
         scheduler=scheduler,
         epochs=epochs,
-        record=True
+        record=True,
+        num_classes=n_classes
     )
+    
+    model_retrain = result['model']
+    clean_metrics = result['history'][0]  # List of dicts with per-epoch metrics
+    poison_metrics = result['history'][1]
 
     # Save results
     print("Saving results...")
-    np.save(output_path + "paccs.npy", poison_metrics)
-    np.save(output_path + "caccs.npy", clean_metrics)
+    # Save full metrics (includes per_class_accuracy, per_class_f1, macro_f1, weighted_f1)
+    np.save(output_path + "clean_metrics.npy", clean_metrics, allow_pickle=True)
+    np.save(output_path + "poison_metrics.npy", poison_metrics, allow_pickle=True)
+    # Also save simplified accuracy/loss format for backward compatibility
+    clean_acc_loss = [(m['accuracy'], m['loss']) for m in clean_metrics]
+    poison_acc_loss = [(m['accuracy'], m['loss']) for m in poison_metrics]
+    np.save(output_path + "caccs.npy", clean_acc_loss)
+    np.save(output_path + "paccs.npy", poison_acc_loss)
     np.save(output_path + "labels.npy", labels_d.numpy())
     torch.save(model_retrain.state_dict(), output_path + "model.pth")
 
