@@ -111,7 +111,7 @@ TRANSFORM_TEST_XY = {
 
 N_CLASSES = {
     'cifar': 10,
-    'cifar_100': 20,
+    'cifar_100': 100,
     'tiny_imagenet': 200
 }
 
@@ -391,7 +391,7 @@ def load_cifar_dataset(path, train=True):
     return dataset
 
 
-def load_cifar_100_dataset(path, train=True, coarse=True):
+def load_cifar_100_dataset(path, train=True, coarse=False):
     dataset = datasets.CIFAR100(root=str(path),
                                 train=train,
                                 download=True)
