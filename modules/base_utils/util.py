@@ -326,8 +326,8 @@ def mini_train(
                     if record:
                         metrics = clf_eval_detailed(model, dataset, num_classes)
                         pbar_postfix.update({
-                            "acc" + str(i): "%.2f" % (metrics['accuracy'] * 100),
-                            "f1" + str(i): "%.2f" % (metrics['macro_f1'] * 100),
+                            "acc-" + str(i): "%.2f" % (metrics['accuracy'] * 100),
+                            "f1-" + str(i): "%.2f" % (metrics['macro_f1'] * 100),
                         })
                         history[i].append(metrics)
                     else:
