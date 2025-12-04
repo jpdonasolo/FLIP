@@ -117,7 +117,7 @@ TINY_IMAGENET_TRANSFORM_TEST = transforms.Compose(
 PATH = {
     'cifar': Path("./data/data_cifar10"),
     'cifar_100': Path("./data/data_cifar100"),
-    'tiny_imagenet': "/scr/tiny-imagenet-200",
+    'tiny_imagenet': "./data/tiny-imagenet-200",
     'imagenet': Path("./data/ilsvrc_img_train")
 }
 
