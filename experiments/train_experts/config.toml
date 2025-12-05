@@ -5,10 +5,10 @@
 
 # Module to train and record an expert trajectory.
 [train_expert]
-output_dir = "out/checkpoints/r32p_1xs/10/"
-model = "r32p"
+output_dir = "out/checkpoints/tiny_imagenet_100_r18_1xs/2/"
+model = "r18-tin"
 trainer = "sgd"
-dataset = "cifar"
+dataset = "tiny_imagenet"
 source_label = 9
 target_label = 4
 poisoner = "1xs"

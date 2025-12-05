@@ -1,0 +1,5 @@
+[select_flips]
+budgets = [150, 300, 500, 1000, 1500]
+input_label_glob = "out/student_models/tiny_imagenet/1/labels.npy"
+true_labels = "out/student_models/tiny_imagenet/1/true.npy"
+output_dir = "out/student_models/tiny_imagenet/1/"

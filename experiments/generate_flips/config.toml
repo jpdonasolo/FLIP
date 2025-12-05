@@ -1,5 +1,5 @@
 [select_flips]
-budgets = [150, 300, 500, 1000]
-input_label_glob = "out/student_models/9labels.npy"
-true_labels = "out/student_models/9true.npy"
-output_dir = "out/student_models/9/"
+budgets = [150, 300, 500, 1000, 1500]
+input_label_glob = "out/student_models/cifar_100/0/labels.npy"
+true_labels = "out/student_models/cifar_100/0/true.npy"
+output_dir = "out/student_models/cifar_100/0/"
