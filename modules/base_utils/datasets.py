@@ -364,7 +364,7 @@ class MTTDataset(Dataset):
         train_oh[torch.tensor(train_y)] = 1
 
         if i >= len(self.distill):
-            i = self.poison_inds[i % len(self.distill)]
+            i = self.poison_inds[i % len(self.poison_inds)]
 
         random.seed(seed)
         torch.manual_seed(seed)
